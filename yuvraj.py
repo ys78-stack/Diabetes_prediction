@@ -1,10 +1,13 @@
 import streamlit as st
 import joblib
 import numpy as np
+import pandas as pd
+from pathlib import Path
 
 # =========================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # =========================
+
 st.set_page_config(
     page_title="Diabetes Prediction System",
     page_icon="🩺",
@@ -14,19 +17,37 @@ st.set_page_config(
 # =========================
 # LOAD MODEL
 # =========================
-model = joblib.load("diabetes_model.pkl")
+
+MODEL_PATH = Path(__file__).parent / "diabetes_model.pkl"
+
+@st.cache_resource
+def load_model():
+    return joblib.load(MODEL_PATH)
+
+try:
+    model = load_model()
+except Exception as e:
+    st.error(f"Unable to load model: {e}")
+    st.stop()
 
 # =========================
 # TITLE
 # =========================
+
 st.title("🩺 Diabetes Prediction System")
-st.write("Enter patient details below to predict diabetes risk.")
+
+st.write(
+    "Enter patient details below to predict diabetes risk."
+)
 
 st.markdown("---")
 
 # =========================
 # INPUT FIELDS
 # =========================
+
+st.subheader("Patient Information")
+
 pregnancies = st.number_input(
     "Pregnancies",
     min_value=0,
@@ -58,7 +79,7 @@ skin_thickness = st.number_input(
 insulin = st.number_input(
     "Insulin",
     min_value=0,
-    max_value=1000,
+    max_value=900,
     value=80
 )
 
@@ -83,47 +104,65 @@ age = st.number_input(
     value=30
 )
 
+st.markdown("---")
+
 # =========================
-# PREDICTION BUTTON
+# PREDICTION
 # =========================
-if st.button("Predict Diabetes"):
 
-    data = np.array([[
-        pregnancies,
-        glucose,
-        blood_pressure,
-        skin_thickness,
-        insulin,
-        bmi,
-        dpf,
-        age
-    ]])
+if st.button("Predict Diabetes", use_container_width=True):
 
-probability = model.predict_proba(data)[0][1]
+    # Prepare patient data
+    data = pd.DataFrame([{
+        "Pregnancies": pregnancies,
+        "Glucose": glucose,
+        "BloodPressure": blood_pressure,
+        "SkinThickness": skin_thickness,
+        "Insulin": insulin,
+        "BMI": bmi,
+        "DiabetesPedigreeFunction": dpf,
+        "Age": age
+    }])
 
-if probability >= 0.60:
-    st.error("⚠️ High Risk of Diabetes Detected")
-else:
-    st.success("✅ Low Risk of Diabetes")
+    try:
+        # Predict probability
+        probability = model.predict_proba(data)[0][1]
 
-st.write(
-    f"**Diabetes Probability:** {probability*100:.2f}%"
-)
+        # Classification threshold
+        threshold = 0.60
 
-st.progress(float(probability))
+        st.markdown("---")
+        st.subheader("Prediction Result")
 
-    st.markdown("---")
+        if probability >= threshold:
 
-    if prediction == 1:
-        st.error("⚠️ High Risk of Diabetes Detected")
-    else:
-        st.success("✅ Low Risk of Diabetes")
+            st.error("⚠️ High Risk of Diabetes Detected")
 
-    st.write(
-        f"**Diabetes Probability:** {probability*100:.2f}%"
-    )
+        else:
 
-    st.progress(float(probability))
+            st.success("✅ Low Risk of Diabetes")
+
+        # Display probability
+        st.write(
+            f"**Model Estimated Probability: {probability * 100:.2f}%**"
+        )
+
+        st.progress(float(probability))
+
+    except Exception as e:
+
+        st.error(f"Prediction Error: {e}")
+
+# =========================
+# FOOTER
+# =========================
 
 st.markdown("---")
-st.caption("Machine Learning Based Diabetes Prediction System")
+
+st.caption(
+    "Machine Learning Based Diabetes Prediction System"
+)
+
+st.caption(
+    "Educational project only. This prediction is not a medical diagnosis."
+)
