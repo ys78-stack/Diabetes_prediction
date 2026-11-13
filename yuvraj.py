@@ -15,7 +15,6 @@ st.set_page_config(
 # LOAD MODEL
 # =========================
 model = joblib.load("diabetes_model.pkl")
-scaler = joblib.load("scaler.pkl")
 
 # =========================
 # TITLE
@@ -100,10 +99,18 @@ if st.button("Predict Diabetes"):
         age
     ]])
 
-    data_scaled = scaler.transform(data)
+probability = model.predict_proba(data)[0][1]
 
-    prediction = model.predict(data_scaled)[0]
-    probability = model.predict_proba(data_scaled)[0][1]
+if probability >= 0.60:
+    st.error("⚠️ High Risk of Diabetes Detected")
+else:
+    st.success("✅ Low Risk of Diabetes")
+
+st.write(
+    f"**Diabetes Probability:** {probability*100:.2f}%"
+)
+
+st.progress(float(probability))
 
     st.markdown("---")
 
